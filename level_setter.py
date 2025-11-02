@@ -155,7 +155,7 @@ def clear_resume(b: bytes) -> bytes:
 def main():
     print("-------- BOOSTED Level Editor --------\n")
 
-    inp = input("Input save [BOOSTED.sav]: ").strip() or "BOOSTED.sav"
+    inp = input("Input save [BOOSTED.sav]: ").strip()
     inp_path = Path(inp)
     if not inp_path.exists():
         print("Not found:", inp_path); raise SystemExit(1)
