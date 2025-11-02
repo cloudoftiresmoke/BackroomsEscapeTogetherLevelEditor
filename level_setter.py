@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # BOOSTED level setter
-# - Edits CurrentLevel to DA_Level_<N> (same logic as working script)
+# - Sets CurrentLevel to DA_Level_<N>
 # - Fixes nearby string length fields & payload-size
-# - Also unlocks target level
-# - Optional: boot via Menu instead of target (works around bad resume pointers)
+# - Unlocks target level
 # - Clears common resume/checkpoint tokens
 
 import sys, struct, re
@@ -34,7 +33,6 @@ def locate_current_level_regions(b: bytes):
     window_end = min(len(b), prop_key + 4096)
     seg = b[prop_key:window_end]
 
-    # package path
     rel_path_start = seg.find(b'/Game/')
     if rel_path_start == -1:
         raise SystemExit("Package path '/Game/...' not found after property.")
@@ -44,7 +42,6 @@ def locate_current_level_regions(b: bytes):
         raise SystemExit("Null terminator not found after package path.")
     old_path = b[path_start:path_end].decode('ascii', errors='strict')
 
-    # short name
     rel_name_start = seg.find(b'DA_Level_', path_end - prop_key)
     if rel_name_start == -1:
         raise SystemExit("Short asset name 'DA_Level_*' not found after path.")
@@ -60,22 +57,19 @@ def patch_current_level_bytes(b: bytes, new_level_token: str) -> bytes:
     bb = bytearray(b)
     (path_start, path_end, old_path), (name_start, name_end, old_name), prop_key = locate_current_level_regions(bytes(bb))
 
-    # Replace tokens in strings
     mp = re.search(r'DA_Level_[A-Za-z0-9]+', old_path)
     mn = re.search(r'DA_Level_[A-Za-z0-9]+', old_name)
     if not mp or not mn:
         raise SystemExit("DA_Level_* not found in CurrentLevel strings.")
     new_path = old_path[:mp.start()] + new_level_token + old_path[mp.end():]
-    new_name = new_level_token  # short name is just the token
+    new_name = new_level_token
 
-    # Old/new lengths (include trailing nulls)
     old_path_len = (path_end - path_start) + 1
     old_name_len = (name_end - name_start) + 1
     new_path_len = len(new_path) + 1
     new_name_len = len(new_name) + 1
     delta_total = (new_path_len - old_path_len) + (new_name_len - old_name_len)
 
-    # Rebuild buffer
     nb = bytearray()
     nb += bb[:path_start]
     nb += new_path.encode('ascii') + b'\x00'
@@ -83,7 +77,6 @@ def patch_current_level_bytes(b: bytes, new_level_token: str) -> bytes:
     nb += new_name.encode('ascii') + b'\x00'
     nb += bb[name_end+1:]
 
-    # Update nearby string-length fields
     new_path_start = path_start
     new_name_start = new_path_start + len(new_path) + 1 + (name_start - (path_end+1))
     p_off = find_near_len_field(nb, new_path_start, old_path_len)
@@ -93,7 +86,6 @@ def patch_current_level_bytes(b: bytes, new_level_token: str) -> bytes:
     write_u32le(nb, p_off, new_path_len)
     write_u32le(nb, n_off, new_name_len)
 
-    # Bump a plausible payload-size u32 right after the type string
     after_type = prop_key + len('SoftObjectProperty')
     for i in range(0, 24, 4):
         off = after_type + i
@@ -109,7 +101,6 @@ def unlock_level(b: bytes, level_token: str) -> bytes:
     bb = bytearray(b)
     token = level_token.encode('ascii') + b'\x00'
     i = 0
-    flips = 0
     while True:
         j = bb.find(token, i)
         if j == -1: break
@@ -125,14 +116,12 @@ def unlock_level(b: bytes, level_token: str) -> bytes:
                 for k in range(a2 + 8, none):
                     if bb[start + k] == 0x00:
                         bb[start + k] = 0x01
-                        flips += 1
                         break
         i = j + 1
     return bytes(bb)
 
 def clear_resume(b: bytes) -> bytes:
     bb = bytearray(b)
-    # Flip common run/resume flags to "not in a run"
     for key, to_one in ((b'CanResume', 0), (b'HasOngoingRun', 0), (b'IsInRun', 0)):
         i = 0
         while True:
@@ -148,13 +137,11 @@ def clear_resume(b: bytes) -> bytes:
                         bb[k] = 0x01 if to_one else 0x00
                         break
             i = j + 1
-    # Zero small arrays/counters that look like 'ResumeData', 'Checkpoint', 'CurrentRun'
     for key in (b'ResumeData', b'Checkpoint', b'CurrentRun'):
         i = 0
         while True:
             j = bb.find(key, i)
             if j == -1: break
-            # look back a little to find a plausible u32 count and zero it
             for back in range(4, 16, 4):
                 off = j - back
                 if 0 <= off <= len(bb) - 4:
@@ -183,17 +170,11 @@ def main():
     except Exception:
         print("Level must be an integer."); raise SystemExit(1)
 
-    # Offer menu boot as a workaround for broken resume pointers
-    menu_boot = input("Boot via Menu (and just unlock target)? y/N: ").strip().lower() == "y"
+    token = f"DA_Level_{lvl}"
 
-    token = f"DA_Level_{lvl}" if not menu_boot else "DA_Level_Menu"
-
-    # Read & patch
     b = inp_path.read_bytes()
     b = patch_current_level_bytes(b, token)
-    # Always unlock requested level number (even if menu boot selected)
-    b = unlock_level(b, f"DA_Level_{lvl}")
-    # Clear common resume tokens to avoid resuming into invalid state
+    b = unlock_level(b, token)
     b = clear_resume(b)
 
     if out.exists():
