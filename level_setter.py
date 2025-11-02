@@ -65,7 +65,7 @@ def patch_current_level_bytes(b: bytes, new_level_token: str) -> bytes:
     mn = re.search(r'DA_Level_[A-Za-z0-9]+', old_name)
     if not mp or not mn:
         raise SystemExit("DA_Level_* not found in CurrentLevel strings.")
-    new_path = old_path[:mp.start()] + new_level_token + old_path[m.end():]
+    new_path = old_path[:mp.start()] + new_level_token + old_path[mp.end():]
     new_name = new_level_token  # short name is just the token
 
     # Old/new lengths (include trailing nulls)
