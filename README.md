@@ -22,7 +22,11 @@ C:\Users\%username%\AppData\Local\BET\Saved\SaveGames
 python .\level_setter.py
 ```
 5 - Type or copy the name and extension of your savagame, it'll be the .sav file (e.g BOOSTED.sav)
+
 6 - Type the desired filename, if left empty it'll be "originalfilename_patched.sav"
+
 7 - pick the level that you want, available levels [Here](https://backrooms-escape-together.fandom.com/wiki/Levels)
+
   NOTE: you will be taken to the lore level not the level in order so, for example, level 2 will take you to "Pipe Dreams"
+  
 8 - GG Have fun!
