@@ -1,9 +1,4 @@
-#!/usr/bin/env python3
-# BOOSTED level setter
-# - Sets CurrentLevel to DA_Level_<N>
-# - Fixes nearby string length fields & payload-size
-# - Unlocks target level
-# - Clears common resume/checkpoint tokens
+
 
 import sys, struct, re
 from pathlib import Path
