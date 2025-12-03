@@ -12,6 +12,7 @@ Or direct download from:
 
 ## Instructions
 1 - Download the .py file in this repo.
+
 2 - Copy the file to: 
 ```
 C:\Users\%username%\AppData\Local\BET\Saved\SaveGames
